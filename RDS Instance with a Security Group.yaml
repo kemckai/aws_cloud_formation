@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: '2022-09-09'
+Description: RDS Instance with a Security Group to allow MySQL access.
+
+Resources:
+  MyDBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow MySQL access
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 0.0.0.0/0
+
+  MyRDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: mydbinstance
+      AllocatedStorage: 20
+      DBInstanceClass: db.t2.micro
+      Engine: mysql
+      MasterUsername: admin
+      MasterUserPassword: password123
+      VPCSecurityGroups:
+        - !Ref MyDBSecurityGroup
+      
+Outputs:
+  RDSInstanceEndpoint:
+    Description: "RDS Endpoint"
+    Value: !GetAtt MyRDSInstance.Endpoint.Address
