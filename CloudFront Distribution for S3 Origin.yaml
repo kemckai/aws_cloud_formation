@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: '2023-09-09'
+Description: CloudFront Distribution for an S3 Bucket.
+
+Resources:
+  MyS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: my-cloudfront-origin-bucket
+
+  MyOriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: "Access identity for my S3 bucket"
+
+  MyCloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: "My CloudFront Distribution"
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt MyS3Bucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: !Ref MyOriginAccessIdentity
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - POST
+          CachedMethods:
+            - GET
+            - HEAD
+          ForwardedValues:
+            QueryString: false
+        Enabled: true
+
+Outputs:
+  CloudFrontDomainName:
+    Description: "CloudFront Domain Name"
+    Value: !GetAtt MyCloudFrontDistribution.DomainName
