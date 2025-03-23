@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: '2022-09-09'
+Description: ELB with EC2 instances behind it.
+
+Resources:
+  MyLoadBalancer:
+    Type: AWS::ElasticLoadBalancing::LoadBalancer
+    Properties:
+      LoadBalancerName: my-load-balancer
+      Listeners:
+        - LoadBalancerPort: 80
+          InstancePort: 80
+          Protocol: HTTP
+      AvailabilityZones: !GetAZs ''
+
+  MyEC2Instance1:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-0c55b159cbfafe1f0
+      SecurityGroups: 
+        - !Ref MyInstanceSecurityGroup
+
+  MyEC2Instance2:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-0c55b159cbfafe1f0
+      SecurityGroups: 
+        - !Ref MyInstanceSecurityGroup
+
+  MyInstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow HTTP access from ELB
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      
+Outputs:
+  LoadBalancerDNS:
+    Description: "DNS name of the load balancer"
+    Value: !GetAtt MyLoadBalancer.DNSName
