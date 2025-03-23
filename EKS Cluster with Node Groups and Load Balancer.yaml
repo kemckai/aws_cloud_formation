@@ -1,0 +1,97 @@
+AWSTemplateFormatVersion: '2023-09-09'
+Description: AWS EKS Cluster with Node Groups and Application Load Balancer.
+
+Resources:
+  MyVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+
+  MySubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+
+  MySubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+
+  EksCluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: my-eks-cluster
+      RoleArn: !GetAtt EksRole.Arn
+      ResourcesVpcConfig:
+        SubnetIds:
+          - !Ref MySubnet1
+          - !Ref MySubnet2
+
+  EksRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: eks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: eks-cluster-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - eks:CreateCluster
+                  - eks:DescribeCluster
+                  - eks:UpdateClusterConfig
+                  - eks:DeleteCluster
+                Resource: "*"
+
+  NodeGroup:
+    Type: AWS::EKS::Nodegroup
+    Properties:
+      ClusterName: !Ref EksCluster
+      NodeRole: !GetAtt NodeGroupRole.Arn
+      ScalingConfig:
+        DesiredSize: 3
+        MaxSize: 5
+        MinSize: 1
+      Subnets:
+        - !Ref MySubnet1
+        - !Ref MySubnet2
+
+  NodeGroupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: eks-node-group-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - eks:DescribeNodegroup
+                  - eks:ListClusters
+                  - eks:DescribeCluster
+                Resource: "*"
+
+Outputs:
+  ClusterEndpoint:
+    Description: "EKS Cluster Endpoint"
+    Value: !GetAtt EksCluster.Endpoint
