@@ -1,0 +1,18 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: S3 Bucket with versioning and logging enabled.
+
+Resources:
+  MyS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: my-versioned-logs-bucket
+      VersioningConfiguration:
+        Status: Enabled
+      LoggingConfiguration:
+        DestinationBucketName: my-logging-bucket
+        LogFilePrefix: logs/
+
+Outputs:
+  S3BucketName:
+    Description: "S3 Bucket Name"
+    Value: !Ref MyS3Bucket
