@@ -1,0 +1,79 @@
+AWSTemplateFormatVersion: '2023-09-09'
+Description: Multi-Tier application architecture with VPC, EC2 instances, RDS, and Auto Scaling.
+
+Resources:
+  MyVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+
+  WebAppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Allow HTTP/HTTPS traffic"
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+  MyDBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Allow MySQL access"
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: !GetAtt WebAppSecurityGroup.IpAddress
+
+  MyDBInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: mydbinstance
+      AllocatedStorage: 20
+      DBInstanceClass: db.t2.micro
+      Engine: mysql
+      MasterUsername: admin
+      MasterUserPassword: password123
+      VPCSecurityGroups:
+        - !Ref MyDBSecurityGroup
+
+  LaunchConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: ami-0c55b159cbfafe1f0
+      InstanceType: t2.micro
+      SecurityGroups:
+        - !Ref WebAppSecurityGroup
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties: 
+      LaunchConfigurationName: !Ref LaunchConfiguration
+      MinSize: '1'
+      MaxSize: '5'
+      VPCZoneIdentifier: 
+        - !Ref PublicSubnet
+      DesiredCapacity: '2'
+
+  ScalingPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref AutoScalingGroup
+      AdjustmentType: ChangeInCapacity
+      ScalingAdjustment: '1'
+      Cooldown: '300'
+
+Outputs:
+  DBInstanceEndpoint:
+    Description: "Database Endpoint"
+    Value: !GetAtt MyDBInstance.Endpoint.Address
